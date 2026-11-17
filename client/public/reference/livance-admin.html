@@ -1205,8 +1205,8 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
 
   /* ---------------- auth ---------------- */
   routes['/login'] = function (q) {
-    var mode = q.mode === 'signup' ? 'signup' : 'login', next = q.next || '/dashboard';
-    var html = '<section class="band-sm"><div class="wrap" style="max-width:480px"><div class="card" style="padding:clamp(26px,4vw,40px)"><nav class="seg"><a href="' + link('/login?next=' + encodeURIComponent(next)) + '" aria-current="' + (mode === 'login') + '">Log in</a><a href="' + link('/login?mode=signup&next=' + encodeURIComponent(next)) + '" aria-current="' + (mode === 'signup') + '">Create account</a></nav>' +
+    var mode = 'login', next = '/admin';
+    var html = '<section class="band-sm"><div class="wrap" style="max-width:480px"><div class="card" style="padding:clamp(26px,4vw,40px)"><h1>Admin login</h1>' +
       (next.indexOf('/checkout') === 0 ? '<p class="alert info">Log in or create an account to finish booking. Your invoice and bookings will live in your dashboard.</p>' : '') + '<p class="alert error" id="a-err" hidden></p>' +
       (mode === 'login' ? '<form class="form" id="a-form"><div class="field"><label>Email</label><input type="email" name="email" placeholder="you@company.com"></div><div class="field"><label>Password</label><input type="password" name="password" placeholder="Enter password"></div><button class="btn btn-primary btn-block">Log in</button></form>'
         : '<form class="form" id="a-form"><div class="field"><label>Full name</label><input name="name"></div><div class="field"><label>Email</label><input type="email" name="email"><span class="hint">Invoices are sent here.</span></div><div class="field"><label>Mobile</label><input name="phone" placeholder="10-digit mobile"></div><div class="field"><label>Password</label><input type="password" name="password"><span class="hint">At least 10 characters.</span></div><button class="btn btn-primary btn-block">Create account</button></form>') + '</div></div></section>';
@@ -1219,7 +1219,12 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
           var promise = mode === 'login' ? BRIDGE.signIn(email,f.password.value) : BRIDGE.signUp({name:f.name.value.trim(),email:email,phone:f.phone.value,password:f.password.value});
           promise.then(function(result){
             if(result && result.needsVerification){err.hidden=false;err.className='alert info';err.textContent='Account created. Please verify your email, then log in.';return;}
-            refreshLive(result?.role==='admin' && next==='/dashboard'?'/admin':next);
+            if(result?.role!=='admin'){
+              BRIDGE.signOut().catch(liveFail);
+              err.hidden=false;err.textContent='This account does not have administrator access.';
+              return;
+            }
+            refreshLive('/admin');
           }).catch(function(e){err.hidden=false;err.textContent=e.message||'Authentication failed';})
           .finally(function(){submit.disabled=false;});
           return;
@@ -2740,7 +2745,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
     });
   };
 
-  if(!CONNECTED){ try { db=JSON.parse(localStorage.getItem(KEY)||'null'); } catch(e) {db=null;} }
+  if(!CONNECTED){ app.innerHTML='<main class="band-sm"><div class="wrap" style="max-width:480px"><div class="card"><h1>Admin login unavailable</h1><p>Configure Supabase to access the admin portal.</p></div></div></main>'; return; }
   if(!db) seed();
   if(typeof migrateDemo==='function')migrateDemo();
   if(window.LIVANCE_START&&current==='/'){current=window.LIVANCE_START;if(!CONNECTED&&typeof startAs==='function')startAs();}

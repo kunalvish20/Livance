@@ -10,11 +10,12 @@ const run=f=>(req,res,next)=>Promise.resolve(f(req,res,next)).catch(next);
 const fail=(status,message)=>Object.assign(new Error(message),{status});
 const text=(v,max=200)=>String(v??'').trim().slice(0,max);
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ADMIN_EMAIL='kunalvishwakarma2903@gmail.com';
 const email=v=>{const e=text(v,254).toLowerCase();if(!emailPattern.test(e))throw fail(400,'Enter a valid email address');return e};
 const limit=new Map();
 function basicLimit(req,rate=12,period=3600000){const ip=String(req.headers['x-forwarded-for']||req.ip||'').split(',')[0];const k=`${req.path}/${ip}`;const now=Date.now();const r=limit.get(k)||{n:0,end:now+period};if(r.end<now){r.end=now+period;r.n=0}r.n++;limit.set(k,r);if(limit.size>10000)limit.clear();if(r.n>rate)throw fail(429,'Too many requests. Please try again later.')}
 const token=req=>{const m=/^Bearer (\S+)$/i.exec(req.headers.authorization||'');if(!m)throw fail(401,'Sign in required');return m[1]};
-async function identity(req){const access=token(req),client=userClient(access);const {data:{user},error}=await client.auth.getUser(access);if(error||!user)throw fail(401,'Your session has expired');const {data:profile,error:pe}=await client.from('profiles').select('id,role,full_name').eq('id',user.id).maybeSingle();if(pe)throw fail(503,`Profile lookup failed: ${pe.message}`);return {user,client,role:profile?.role||'member',name:profile?.full_name||user.user_metadata?.full_name||''}}
+async function identity(req){const access=token(req),client=userClient(access);const {data:{user},error}=await client.auth.getUser(access);if(error||!user)throw fail(401,'Your session has expired');const {data:profile,error:pe}=await client.from('profiles').select('id,role,full_name').eq('id',user.id).maybeSingle();if(pe)throw fail(503,`Profile lookup failed: ${pe.message}`);const role=profile?.role==='admin'&&user.email?.toLowerCase()!==ADMIN_EMAIL?'member':profile?.role||'member';return {user,client,role,name:profile?.full_name||user.user_metadata?.full_name||''}}
 async function asAdmin(req){const actor=await identity(req);if(actor.role!=='admin')throw fail(403,'Administrator access required');return actor}
 // All email is server-side. No Resend key is sent to the browser.
 function htmlEscape(s){return String(s).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}

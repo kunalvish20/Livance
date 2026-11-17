@@ -16,6 +16,6 @@ function App(){const[error,setError]=useState('');const[notice,setNotice]=useSta
   {!bridge.enabled&&<div className="live-banner" role="status">UI preview only — Add Supabase settings and run SQL 001 + 002 + 003 to enable real login, data and emails.</div>}
   {notice&&<div className="live-alert" role="alert">{notice}</div>}
   {error?<div className="livance-error">Unable to load the original Livance interface. {error}</div>:
-  <iframe className="livance-frame" title={admin?'Livance admin':'Livance website'} src={source} onError={()=>setError('The reference HTML did not load.')} allow="clipboard-write"/>}
+  (!admin||bridge.enabled)&&<iframe className="livance-frame" title={admin?'Livance admin':'Livance website'} src={source} onError={()=>setError('The reference HTML did not load.')} allow="clipboard-write"/>}
  </main>}
 createRoot(document.getElementById('root')).render(<App/>);
