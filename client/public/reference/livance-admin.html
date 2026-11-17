@@ -644,6 +644,11 @@ a.kpi:hover{border-color:var(--orange)}
 .ph-admin{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
 .ph-item{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
 .ph-item .photo{border-radius:0;aspect-ratio:4/3}
+</style><style>
+form[data-lf] .f2 .field{align-content:start}
+form[data-lf] .f2 .field>input,form[data-lf] .f2 .field>select,form[data-lf] [data-f="seats"]>input{height:56px;min-height:56px}
+form[data-lf] [data-f="seats"]{width:calc((100% - 16px)/2)}
+@media(max-width:620px){form[data-lf] [data-f="seats"]{width:100%}}
 </style><script>if(window.self===window.top){window.location.replace('/admin');}</script></head>
 <body>
 <div id="app"></div>
@@ -1942,7 +1947,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
       '<div class="f2"><div class="field" data-f="solution"><label>What do you need?</label><select name="solution"><option value="">Choose a solution</option>' + Object.keys(SOLUTIONS).map(function (k) { return '<option value="' + k + '"' + ((v.solution || o.solution) === k ? ' selected' : '') + '>' + SOLUTIONS[k] + '</option>'; }).join('') + '</select><span class="err" hidden></span></div>' +
       '<div class="field"><label>Preferred centre</label><select name="centre"><option value="">Any centre</option>' + centres().map(function (c) { return '<option value="' + c.key + '"' + (o.centre === c.key ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select></div></div>' +
       '<div class="field" data-f="vo_plan" data-when="virtual_office"><label>Virtual office for</label><div class="seg-radio">' + Object.keys(VO_LABEL).map(function (k) { return '<label><input type="radio" name="vo_plan" value="' + k + '"' + (o.voPlan === k ? ' checked' : '') + '><span>' + VO_LABEL[k] + '</span></label>'; }).join('') + '</div><span class="err" hidden></span></div>' +
-      '<div class="field" data-f="seats" data-when="dedicated_desk private_cabin"><label>How many seats?</label><input type="number" name="seats" min="1" max="500" inputmode="numeric" style="max-width:180px"><span class="err" hidden></span></div>' +
+      '<div class="field" data-f="seats" data-when="dedicated_desk private_cabin"><label>How many seats?</label><input type="number" name="seats" min="1" max="500" inputmode="numeric"><span class="err" hidden></span></div>' +
       '<div class="field"><label>Anything else? <span class="soft">(optional)</span></label><textarea name="message" rows="3" maxlength="1000"></textarea></div>' +
       '<label class="check small"><input type="checkbox" name="marketing_opt_in"><span>Optional: Send me workspace offers by email. I can unsubscribe anytime.</span></label>' +
       '<button class="btn btn-primary btn-block">' + (o.cta || 'Send enquiry') + '</button><p class="xs muted">We\'ll call or WhatsApp you within working hours. No spam.</p></form>';
