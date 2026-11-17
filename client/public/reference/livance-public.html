@@ -644,7 +644,16 @@ a.kpi:hover{border-color:var(--orange)}
 .ph-admin{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
 .ph-item{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
 .ph-item .photo{border-radius:0;aspect-ratio:4/3}
-</style><style>#billing-wrap .f2 .field{align-content:start}</style><script>if(window.self===window.top){window.location.replace('/');}</script></head>
+</style><style>
+#billing-wrap .f2 .field{align-content:start}
+.rooms .room{display:flex;flex-direction:column;gap:0;min-width:0;height:100%}
+.rooms .room-ph{display:block;flex:none;width:100%;aspect-ratio:16/9;overflow:hidden}
+.rooms .room-ph img{display:block;width:100%;height:100%;object-fit:cover}
+.rooms .room-body{flex:1;align-content:start}
+.rooms .room-body .between{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:center;gap:8px;width:100%}
+.rooms .room-body .between b{min-width:0;overflow-wrap:anywhere}
+.rooms .room-body .between .mono{display:inline-block;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);font:700 .86rem/1.2 var(--f-body);white-space:nowrap}
+</style><script>if(window.self===window.top){window.location.replace('/');}</script></head>
 <body>
 <div id="app"></div>
 <div class="modal" id="mock" hidden role="dialog" aria-modal="true" aria-labelledby="mock-t"><div class="modal-box"><header><b id="mock-t">Test payment</b><button type="button" class="btn btn-ghost btn-sm" id="mock-cancel">Cancel</button></header>
