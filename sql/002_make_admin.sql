@@ -1,31 +1,39 @@
--- First create this account in Supabase Authentication > Users > Add user.
--- Enter its password in Supabase; never put passwords in SQL, source, or Git.
+-- First create both accounts in Supabase Authentication > Users > Add user.
+-- Set their passwords in Supabase; never put passwords in SQL, source, or Git.
 -- Run this script in the Supabase SQL Editor after 001_schema.sql.
 begin;
+-- Remove the old one-admin limit before granting the second account access.
+drop index if exists public.profiles_one_admin;
 do $$
-declare admin_user_id uuid;
+declare missing_email text;
 begin
-  select id into admin_user_id
-  from auth.users
-  where lower(email) = 'kunalvishwakarma2903@gmail.com';
+  select allowed.email into missing_email
+  from (values
+    ('kunalvishwakarma2903@gmail.com'),
+    ('shwetaansh@livance.co.in')
+  ) as allowed(email)
+  left join auth.users u on lower(u.email) = allowed.email
+  where u.id is null
+  limit 1;
 
-  if admin_user_id is null then
-    raise exception 'Create kunalvishwakarma2903@gmail.com in Authentication > Users first';
+  if missing_email is not null then
+    raise exception 'Create % in Authentication > Users first', missing_email;
   end if;
 
   update public.profiles set role = 'member'
-  where role = 'admin' and id <> admin_user_id;
+  where role = 'admin'
+    and id not in (
+      select u.id from auth.users u
+      where lower(u.email) in ('kunalvishwakarma2903@gmail.com', 'shwetaansh@livance.co.in')
+    );
 
   insert into public.profiles (id, role)
-  values (admin_user_id, 'admin')
+  select u.id, 'admin' from auth.users u
+  where lower(u.email) in ('kunalvishwakarma2903@gmail.com', 'shwetaansh@livance.co.in')
   on conflict (id) do update set role = 'admin';
 end $$;
 
--- Enforce one admin profile even if another profile is changed later.
-create unique index if not exists profiles_one_admin
-on public.profiles (role) where role = 'admin';
-
--- Admin policies already call this function. Also require the intended Auth email.
+-- Admin policies already call this function. Only these two Auth users qualify.
 create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
@@ -33,12 +41,12 @@ returns boolean language sql stable security definer set search_path = public as
     join auth.users u on u.id = p.id
     where p.id = auth.uid()
       and p.role = 'admin'
-      and lower(u.email) = 'kunalvishwakarma2903@gmail.com'
+      and lower(u.email) in ('kunalvishwakarma2903@gmail.com', 'shwetaansh@livance.co.in')
   )
 $$;
 commit;
 
--- Should return exactly one row, with role admin.
+-- Should return exactly two rows, both with role admin.
 select u.email, p.role
 from auth.users u join public.profiles p on p.id = u.id
 where p.role = 'admin';
