@@ -649,7 +649,12 @@ form[data-lf] .f2 .field{align-content:start}
 form[data-lf] .f2 .field>input,form[data-lf] .f2 .field>select,form[data-lf] [data-f="seats"]>input{height:56px;min-height:56px}
 form[data-lf] [data-f="seats"]{width:calc((100% - 16px)/2)}
 @media(max-width:620px){form[data-lf] [data-f="seats"]{width:100%}}
-</style><script>if(window.self===window.top){window.location.replace('/admin');}</script></head>
+.password-visibility{display:block;position:relative;min-width:0;width:100%}
+.password-visibility>input{padding-right:56px}
+.password-visibility-button{position:absolute;top:50%;right:8px;transform:translateY(-50%);display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--soft);cursor:pointer}
+.password-visibility-button:hover{background:var(--surface-2);color:var(--ink)}
+.password-visibility-button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+</style><script defer src="/reference/password-visibility.js"></script><script>if(window.self===window.top){window.location.replace('/admin');}</script></head>
 <body>
 <div id="app"></div>
 <script>window.LIVANCE_START="/admin";</script>

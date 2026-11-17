@@ -657,7 +657,12 @@ form[data-lf] [data-f="seats"]{width:calc((100% - 16px)/2)}
 .rooms .room-body .between{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:center;gap:8px;width:100%}
 .rooms .room-body .between b{min-width:0;overflow-wrap:anywhere}
 .rooms .room-body .between .mono{display:inline-block;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--ink);font:700 .86rem/1.2 var(--f-body);white-space:nowrap}
-</style><script>if(window.self===window.top){window.location.replace('/');}</script></head>
+.password-visibility{display:block;position:relative;min-width:0;width:100%}
+.password-visibility>input{padding-right:56px}
+.password-visibility-button{position:absolute;top:50%;right:8px;transform:translateY(-50%);display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--soft);cursor:pointer}
+.password-visibility-button:hover{background:var(--surface-2);color:var(--ink)}
+.password-visibility-button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+</style><script defer src="/reference/password-visibility.js"></script><script>if(window.self===window.top){window.location.replace('/');}</script></head>
 <body>
 <div id="app"></div>
 <div class="modal" id="mock" hidden role="dialog" aria-modal="true" aria-labelledby="mock-t"><div class="modal-box"><header><b id="mock-t">Test payment</b><button type="button" class="btn btn-ghost btn-sm" id="mock-cancel">Cancel</button></header>
