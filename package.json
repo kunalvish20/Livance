@@ -8,7 +8,7 @@
     "dev:web": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "node tests/static-check.mjs && node --check server/index.js && node --check server/live.js && node --check api/index.js"
+    "check": "node tests/static-check.mjs && node tests/live-bridge-check.mjs && node --check server/index.js && node --check server/live.js && node --check api/index.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",

@@ -645,6 +645,18 @@ a.kpi:hover{border-color:var(--orange)}
 .ph-item{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
 .ph-item .photo{border-radius:0;aspect-ratio:4/3}
 </style><style>
+.workspace-load{min-height:100vh;display:grid;place-items:center;padding:32px;background:radial-gradient(circle at 80% 0%,var(--orange-tint),transparent 38%),var(--alt)}
+.workspace-load-card{display:grid;gap:14px;width:min(100%,520px);padding:clamp(28px,5vw,48px);border:1px solid var(--line);border-radius:24px;background:var(--surface);box-shadow:var(--shadow)}
+.workspace-load-card h1{margin:0;font-size:clamp(1.6rem,3vw,2.2rem)}
+.workspace-load-card p{margin:0;color:var(--muted);overflow-wrap:anywhere}
+.workspace-spinner{width:40px;height:40px;border:3px solid var(--line);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+.dashboard-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:end;padding:clamp(26px,4vw,42px);border-radius:22px;background:linear-gradient(135deg,#14213D,#243963);color:#fff;box-shadow:0 14px 34px #14213D24}
+.dashboard-hero .eyebrow{color:#FFB17F}.dashboard-hero h1{margin:10px 0;font-size:clamp(1.8rem,3vw,2.5rem);color:#fff}.dashboard-hero p{margin:0;color:#D5DEEF}
+.dashboard-hero-actions{display:flex;flex-wrap:wrap;gap:10px}.dashboard-hero-actions .btn-ghost{border-color:#FFFFFF55;background:#FFFFFF16;color:#fff}.dashboard-hero-actions .btn-ghost:hover{background:#FFFFFF25;border-color:#fff}
+.dashboard-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.dashboard-metric{display:grid;gap:8px;min-width:0;padding:20px 22px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);text-decoration:none;transition:transform .18s,border-color .18s,box-shadow .18s}.dashboard-metric:hover{transform:translateY(-2px);border-color:var(--orange);box-shadow:var(--shadow)}.dashboard-metric span{color:var(--muted);font-size:.82rem}.dashboard-metric b{font:700 1.8rem/1 var(--f-display)}.dashboard-metric small{color:var(--soft)}
+.dash{gap:28px}.dash-nav{padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.dash-nav a.on{background:var(--orange-tint);color:var(--orange-ink)}
+@media(max-width:760px){.dashboard-hero{grid-template-columns:1fr}.dashboard-summary{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.dashboard-summary{grid-template-columns:1fr}.dashboard-hero-actions .btn{flex:1;justify-content:center}.workspace-load{padding:16px}}
 form[data-lf] .f2 .field{align-content:start}
 form[data-lf] .f2 .field>input,form[data-lf] .f2 .field>select,form[data-lf] [data-f="seats"]>input{height:56px;min-height:56px}
 form[data-lf] [data-f="seats"]{width:calc((100% - 16px)/2)}
@@ -732,7 +744,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
   // Exact source UI; network bridge is provided by its React parent.
   var BRIDGE = window.parent && window.parent !== window && window.parent.LIVANCE_BRIDGE;
   var CONNECTED = !!(BRIDGE && BRIDGE.enabled);
-  var liveReady = false, liveRole = null, liveTimer = null, liveSaving = false, liveDirty = false;
+  var liveReady = false, liveRole = null, liveTimer = null, liveSaving = false, liveDirty = false, liveRequest = 0;
   function liveFail(e) { toast('Sync error: ' + (e && e.message || e)); if (window.parent) window.parent.dispatchEvent(new CustomEvent('livance-live-error', {detail: e && e.message || String(e)})); }
   function setIdentity(u) {
     db.session = null; liveRole = u && u.role || null;
@@ -744,8 +756,26 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
     db.session=id;
   }
   function refreshLive(next) {
-    BRIDGE.bootstrap(db).then(function (r) { db=r.data; if (typeof migrateDemo === 'function') migrateDemo(); setIdentity(r.identity); persistedBookingStatuses={}; (db.bookings||[]).forEach(function(b){if(b.external_id)persistedBookingStatuses[b.external_id]=b.status;}); liveReady=true; if(next) go(next); else if(window.LIVANCE_START && r.identity?.role==='admin')go('/admin'); else render(); })
-      .catch(function (e) { db.session=null; liveRole=null; liveReady=true; liveFail(e); go('/login?next='+(encodeURIComponent(window.LIVANCE_START||'/dashboard'))); });
+    var request = ++liveRequest;
+    liveReady = false;
+    app.innerHTML = '<main class="workspace-load" role="status" aria-live="polite"><div class="workspace-load-card"><span class="workspace-spinner" aria-hidden="true"></span><span class="eyebrow">Livance workspace</span><h1>Opening your dashboard</h1><p>Loading your account and latest information...</p></div></main>';
+    BRIDGE.bootstrap(db).then(function (r) {
+      if (request !== liveRequest) return;
+      db=r.data; if (typeof migrateDemo === 'function') migrateDemo(); setIdentity(r.identity);
+      persistedBookingStatuses={}; (db.bookings||[]).forEach(function(b){if(b.external_id)persistedBookingStatuses[b.external_id]=b.status;});
+      liveReady=true;
+      if(next) go(next);
+      else if(parse().path==='/login' && r.identity) go(r.identity.role==='admin'?'/admin':'/dashboard');
+      else if(window.LIVANCE_START && r.identity?.role==='admin') go('/admin');
+      else render();
+    }).catch(function (e) {
+      if (request !== liveRequest) return;
+      liveReady=true; liveFail(e);
+      app.innerHTML='<main class="workspace-load"><div class="workspace-load-card"><span class="eyebrow">Dashboard unavailable</span><h1>We could not load your workspace</h1><p id="load-error" role="alert"></p><div class="row"><button type="button" class="btn btn-primary" id="load-retry">Try again</button><button type="button" class="btn btn-ghost" id="load-signout">Sign out</button></div></div></main>';
+      $('#load-error').textContent=e.message||'Please try again.';
+      $('#load-retry').onclick=function(){refreshLive(next)};
+      $('#load-signout').onclick=function(){++liveRequest;BRIDGE.signOut().then(function(){db.session=null;liveRole=null;go('/login')}).catch(liveFail)};
+    });
   }
   function livePersist() {
     if (!liveReady || !CONNECTED || liveRole !== 'admin') return;
@@ -981,7 +1011,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
   /* ---------------- routing ---------------- */
   var current = (function () { try { var h = location.hash.slice(1); return h.charAt(0) === '/' ? h : '/'; } catch (e) { return '/'; } })();
   function parse() { var h = current || '/'; var i = h.indexOf('?'); var path = i < 0 ? h : h.slice(0, i); var q = {}; if (i > -1) h.slice(i + 1).split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) q[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); return { path: path, q: q }; }
-  function go(path) { current = path; render(); }
+  function go(path) { current = path; if (location.hash.slice(1) !== path) history.replaceState(null, '', '#' + path); render(); }
   function link(path) { return '#' + path; }
   var routes = {};
   function render() {
@@ -1225,7 +1255,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
         var f = e.target, err = $('#a-err'), email = f.email.value.trim().toLowerCase();
         if (CONNECTED) {
           if(mode==='signup' && (f.name.value.trim().length<2 || !/^[6-9]\d{9}$/.test(f.phone.value.replace(/\D/g,'').slice(-10)) || f.password.value.length<10)){err.hidden=false;err.textContent='Enter your name, valid 10-digit phone, and at least 10-character password.';return;}
-          var submit=f.querySelector('button');submit.disabled=true;err.hidden=true;
+          var submit=f.querySelector('button'), label=submit.textContent;submit.disabled=true;submit.textContent=mode==='login'?'Signing in...':'Creating account...';f.setAttribute('aria-busy','true');err.hidden=true;
           var promise = mode === 'login' ? BRIDGE.signIn(email,f.password.value) : BRIDGE.signUp({name:f.name.value.trim(),email:email,phone:f.phone.value,password:f.password.value});
           promise.then(function(result){
             if(result && result.needsVerification){err.hidden=false;err.className='alert info';err.textContent='Account created. Please verify your email, then log in.';return;}
@@ -1236,7 +1266,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
             }
             refreshLive('/admin');
           }).catch(function(e){err.hidden=false;err.textContent=e.message||'Authentication failed';})
-          .finally(function(){submit.disabled=false;});
+          .finally(function(){submit.disabled=false;submit.textContent=label;f.removeAttribute('aria-busy');});
           return;
         }
         var fail = function (m) { err.hidden = false; err.textContent = m; };
@@ -1408,9 +1438,16 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
   function bindDash() { $('#logout').onclick = function () { db.session = null; if (CONNECTED) { liveRole=null; BRIDGE.signOut().catch(liveFail); } save(); go('/'); }; bindInvoiceButtons();
     $$('[data-cancel]').forEach(function (b) { b.onclick = function () { cancel(+b.dataset.cancel); }; }); }
   function bookingRow(b, cancellable) {
-    var dt = new Date(b.date + 'T00:00:00Z'), up = b.status === 'confirmed' && epoch(b.date, b.kind === 'day_pass' ? OPEN : b.start) > Date.now(), r = b.roomId && room(b.roomId), pct = up ? refundPct(b) : 0;
-    return '<div class="bk"><div class="date"><span>' + dt.toLocaleDateString('en-IN', { month: 'short', timeZone: 'UTC' }) + '</span><b>' + dt.getUTCDate() + '</b><span>' + dt.toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'UTC' }) + '</span></div><div class="stack" style="gap:3px"><b>' + (r ? esc(r.name) + ' · ' + r.seats + ' seats' : b.qty + ' day pass' + (b.qty > 1 ? 'es' : '')) + '</b><span class="small muted">' + esc(centre(b.centre).name) + ' · ' + (r ? hh(b.start) + '–' + hh(b.end) : '9 AM – 7 PM') + '</span>' + (b.passCode && b.status === 'confirmed' ? '<span class="small">Pass code <b class="mono">' + b.passCode + '</b></span>' : '') + '</div>' +
-      '<div class="act row" style="justify-content:flex-end">' + (b.status === 'cancelled' ? '<span class="pill rd">Cancelled</span>' : up ? (cancellable ? '<button class="btn btn-danger btn-sm" data-cancel="' + b.id + '" title="' + (pct === 100 ? 'Full refund' : pct === 50 ? '50% refund' : 'No refund') + '">Cancel · ' + pct + '% refund</button>' : '') + '<span class="pill gr">Confirmed</span>' : '<span class="pill">Completed</span>') + '</div></div>';
+    var dt = b.date ? new Date(b.date + 'T00:00:00Z') : null, r = b.roomId && room(b.roomId), c = centre(b.centre);
+    var upcoming = b.status === 'confirmed' && b.date >= ist().date;
+    var pending = b.status === 'pending' || b.status === 'requested';
+    var pct = upcoming && !b.requested ? refundPct(b) : 0;
+    var title = r ? esc(r.name) + ' &middot; ' + r.seats + ' seats' : b.kind === 'meeting_room' ? 'Meeting room request' : b.kind === 'virtual_office' ? 'Virtual office request' : (Number(b.qty) || 1) + ' day pass' + (Number(b.qty) > 1 ? 'es' : '');
+    var timing = r && b.start != null && b.end != null ? hh(b.start) + '&ndash;' + hh(b.end) : b.kind === 'day_pass' ? '9 AM &ndash; 7 PM' : 'Details to confirm';
+    var status = b.status === 'cancelled' ? '<span class="pill rd">Cancelled</span>' : b.status === 'rejected' ? '<span class="pill rd">Declined</span>' : pending ? '<span class="pill am">Awaiting confirmation</span>' : upcoming ? '<span class="pill gr">Confirmed</span>' : '<span class="pill">Completed</span>';
+    var cancelButton = cancellable && upcoming && !b.requested ? '<button class="btn btn-danger btn-sm" data-cancel="' + b.id + '" title="' + (pct === 100 ? 'Full refund' : pct === 50 ? '50% refund' : 'No refund') + '">Cancel &middot; ' + pct + '% refund</button>' : '';
+    var dateLabel = dt && !isNaN(dt.getTime()) ? '<span>' + dt.toLocaleDateString('en-IN', { month: 'short', timeZone: 'UTC' }) + '</span><b>' + dt.getUTCDate() + '</b><span>' + dt.toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'UTC' }) + '</span>' : '<span>Date</span><b>&mdash;</b><span>to confirm</span>';
+    return '<div class="bk"><div class="date">' + dateLabel + '</div><div class="stack" style="gap:3px"><b>' + title + '</b><span class="small muted">' + esc(c ? c.name : b.centre || 'Location to confirm') + ' &middot; ' + timing + '</span></div><div class="act row" style="justify-content:flex-end">' + cancelButton + status + '</div></div>';
   }
   function cancel(id) {
     var b = db.bookings.filter(function (x) { return x.id === id; })[0], o = db.orders.filter(function (x) { return x.id === b.orderId; })[0], pct = refundPct(b);
@@ -1421,17 +1458,20 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
   }
   routes['/dashboard'] = function () {
     if (needUser('/dashboard')) return; var u = me(); if (u.role === 'admin') { go('/admin'); return; }
-    var up = db.bookings.filter(function (b) { return b.userId === u.id && b.status === 'confirmed' && b.date >= ist().date; }).sort(function (a, b) { return (a.date + a.start) > (b.date + b.start) ? 1 : -1; });
+    var mine = db.bookings.filter(function (b) { return b.userId === u.id; });
+    var up = mine.filter(function (b) { return b.status === 'pending' || b.status === 'requested' || (b.status === 'confirmed' && b.date >= ist().date); }).sort(function (a, b) { return ((a.date||'9999') + (a.start||0)) > ((b.date||'9999') + (b.start||0)) ? 1 : -1; });
+    var pending = mine.filter(function (b) { return b.status === 'pending' || b.status === 'requested'; }).length;
     var vos = db.vos.filter(function (v) { return v.userId === u.id; }), invs = db.invoices.filter(function (i) { return i.userId === u.id; }).slice(-4).reverse();
     var steps = ['Paid', 'KYC uploaded', 'KYC approved', 'Agreement signed', 'Documents issued'], idx = { awaiting_kyc: 1, kyc_review: 2, documents_pending: 3, active: 5 };
-    return { html: dash('o', '<div class="between"><h1 style="font-size:clamp(1.7rem,3vw,2.2rem)">Hi, ' + esc(u.name.split(' ')[0]) + '.</h1><div class="row"><a class="btn btn-ghost btn-sm" href="#/day-pass">Day pass</a><a class="btn btn-primary btn-sm" href="#/meeting-rooms">Book a room</a></div></div>' +
+    return { html: dash('o', '<section class="dashboard-hero"><div><span class="eyebrow">Your workspace</span><h1>Welcome back, ' + esc(u.name.split(' ')[0]) + '.</h1><p>See your bookings, requests and workspace details in one place.</p></div><div class="dashboard-hero-actions"><a class="btn btn-primary" href="#/meeting-rooms">Book a meeting room</a><a class="btn btn-ghost" href="#/day-pass">Explore day passes</a></div></section>' +
+      '<div class="dashboard-summary"><a class="dashboard-metric" href="#/dashboard/bookings"><span>Upcoming & requests</span><b>' + up.length + '</b><small>View your activity</small></a><a class="dashboard-metric" href="#/dashboard/bookings"><span>Awaiting confirmation</span><b>' + pending + '</b><small>Booking requests</small></a><a class="dashboard-metric" href="#/dashboard/invoices"><span>Invoices</span><b>' + db.invoices.filter(function(i){return i.userId===u.id}).length + '</b><small>View documents</small></a></div>' +
       vos.map(function (v) { var s = idx[v.status]; return '<a class="card card-link" href="' + link('/dashboard/vo/' + v.id) + '"><div class="between"><div class="stack" style="gap:2px"><span class="eyebrow">Virtual office</span><b style="font-size:1.1rem">' + esc(v.business) + '</b><span class="small muted">' + PLANS[v.plan].name + ' · ' + esc(centre(v.centre).name) + '</span></div><span class="pill ' + (v.status === 'awaiting_kyc' ? 'or' : v.status === 'active' ? 'gr' : 'am') + '">' + (v.status === 'awaiting_kyc' ? 'Upload KYC' : v.status === 'active' ? 'Active' : 'In progress') + '</span></div><div class="track">' + steps.map(function (x, i) { return '<div class="' + (i < s ? 'done' : i === s ? 'cur' : '') + '">' + x + '</div>'; }).join('') + '</div></a>'; }).join('') +
       '<div class="stack"><div class="between"><h3>Upcoming</h3><a class="link small" href="#/dashboard/bookings">All bookings</a></div>' + (up.length ? up.slice(0, 4).map(function (b) { return bookingRow(b, false); }).join('') : '<div class="card flat"><p class="muted">No upcoming bookings. Rooms start at ₹400 an hour, day passes at ₹500.</p></div>') + '</div>' +
       '<div class="stack"><div class="between"><h3>Recent invoices</h3><a class="link small" href="#/dashboard/invoices">All invoices</a></div>' + (invs.length ? '<div class="tbl"><table><tbody>' + invs.map(function (i) { return '<tr><td><b class="mono">' + i.number + '</b><br><span class="xs muted">' + (i.kind === 'invoice' ? 'Tax invoice' : 'Credit note') + ' · Zoho Books</span></td><td class="num">' + rs(i.total) + '</td><td class="num"><button class="link" data-inv="' + i.id + '">View</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="card flat"><p class="muted">Invoices appear here after your first payment.</p></div>') + '</div>'), init: bindDash };
   };
   routes['/dashboard/bookings'] = function () {
     if (needUser('/dashboard/bookings')) return; var u = me(), all = db.bookings.filter(function (b) { return b.userId === u.id; });
-    var up = all.filter(function (b) { return b.status === 'confirmed' && b.date >= ist().date; }), past = all.filter(function (b) { return up.indexOf(b) < 0; });
+    var up = all.filter(function (b) { return b.status === 'pending' || b.status === 'requested' || (b.status === 'confirmed' && b.date >= ist().date); }), past = all.filter(function (b) { return up.indexOf(b) < 0; });
     return { html: dash('b', '<h1 style="font-size:clamp(1.7rem,3vw,2.2rem)">Bookings</h1><div class="stack"><h3>Upcoming</h3>' + (up.length ? up.map(function (b) { return bookingRow(b, true); }).join('') : '<div class="card flat"><p class="muted">Nothing booked yet.</p></div>') + '</div>' + (past.length ? '<div class="stack"><h3>Past and cancelled</h3>' + past.map(function (b) { return bookingRow(b, false); }).join('') + '</div>' : '')), init: bindDash };
   };
   routes['/dashboard/invoices'] = function () {
@@ -2222,7 +2262,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
     if (needAdmin()) return; var u = me(), t = ist().date, ds = dayStartMs(t), ms = dayStartMs(t.slice(0, 8) + '01');
     syncRenewals();
     var isCrm = canAny(['crm.own', 'crm.team', 'crm.all']), h = new Date(Date.now() + 330 * 6e4).getUTCHours();
-    var html = '<div class="between"><div class="stack" style="gap:4px"><h1>Good ' + (h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening') + ', ' + esc(u.name.split(' ')[0]) + '.</h1><p class="muted">' + fmtDay(t) + ' · ' + esc(roleLabel(u)) + '</p></div>' + (isCrm ? '<a class="btn btn-primary" href="#/admin/crm/new">Add a lead</a>' : '') + '</div>';
+    var html = '<section class="dashboard-hero"><div><span class="eyebrow">Admin overview</span><h1>Good ' + (h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening') + ', ' + esc(u.name.split(' ')[0]) + '.</h1><p>' + fmtDay(t) + ' &middot; Live workspace activity at a glance.</p></div><div class="dashboard-hero-actions"><a class="btn btn-primary" href="#/admin/crm">View enquiries</a><a class="btn btn-ghost" href="#/admin/rooms">Manage rooms</a></div></section>';
     if (isCrm) {
       var vis = visibleLeads(u), open = vis.filter(function (l) { return OPEN_ST.indexOf(l.stage) > -1; }), won = vis.filter(function (l) { return l.stage === 'won' && l.wonAt >= ms; });
       var od = open.filter(overdue).length, today = vis.filter(function (l) { return l.nextFollowUp >= ds && l.nextFollowUp < ds + 864e5; }).length;
@@ -2759,7 +2799,7 @@ module.exports = { esc, markdown, inline, plain, slugify, readMinutes };
   if(!db) seed();
   if(typeof migrateDemo==='function')migrateDemo();
   if(window.LIVANCE_START&&current==='/'){current=window.LIVANCE_START;if(!CONNECTED&&typeof startAs==='function')startAs();}
-  if(CONNECTED){liveReady=false;db.session=null;render();refreshLive();}
+  if(CONNECTED){liveReady=false;db.session=null;refreshLive();}
   else render();
 })();
 </script>
